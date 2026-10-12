@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blurred Vision – BarBuzzer</title>
+  <meta name="description" content="Blurred Vision: a fast-paced visual mystery game. Images come into focus over 30 seconds — guess before the blur clears to score big!">
+
+  <!-- Favicon -->
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+
+  <!-- Game styles -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div id="site-header"></div>
+
+  <!-- ================================================================
+       WELCOME SCREEN
+       ================================================================ -->
+  <div id="welcomeScreen" class="screen" role="main" aria-label="Welcome screen">
+
+    <div class="welcome-hero">
+      <div class="welcome-icon" aria-hidden="true">👁️</div>
+      <h1 class="game-title">BLURRED VISION</h1>
+      <p class="game-tagline">See through the haze. Guess fast, win big.</p>
+    </div>
+
+    <!-- Setup card -->
+    <div class="setup-card">
+      <h2>🎮 Game Setup</h2>
+
+      <label for="playerNameInput" class="sr-only">Your name</label>
+      <input
+        id="playerNameInput"
+        type="text"
+        class="name-input"
+        placeholder="Enter your name…"
+        maxlength="24"
+        autocomplete="off"
+        spellcheck="false"
+        aria-label="Enter your name"
+      />
+
+      <div class="rounds-selector">
+        <label for="roundsSelect">Rounds:</label>
+        <select id="roundsSelect" aria-label="Select number of rounds">
+          <option value="5">5 rounds (Quick)</option>
+          <option value="10" selected>10 rounds (Standard)</option>
+          <option value="15">15 rounds (Marathon)</option>
+          <option value="20">20 rounds (Expert)</option>
+        </select>
+      </div>
+
+      <button id="startBtn" class="btn btn-primary" aria-label="Start Blurred Vision game">
+        👁️ Start Game
+      </button>
+    </div>
+
+    <!-- High score -->
+    <div style="display:flex; align-items:center; gap:0.75rem;">
+      <span style="font-size:0.8rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);">
+        🏆 High Score
+      </span>
+      <span id="welcomeHsValue" style="font-size:1.2rem; font-weight:900; color:var(--neon-yellow); text-shadow: 0 0 10px rgba(255,224,51,0.4);">0</span>
+    </div>
+
+    <!-- How to play -->
+    <div class="how-to-card" role="region" aria-label="How to play">
+      <h3>🕹️ How to Play</h3>
+      <ol class="how-to-list" role="list">
+        <li>
+          <span>1️⃣</span>
+          <span>A blurred image appears — your job is to figure out what it shows.</span>
+        </li>
+        <li>
+          <span>2️⃣</span>
+          <span>The blur melts continuously. Faster guesses score more points.</span>
+        </li>
+        <li>
+          <span>3️⃣</span>
+          <span><strong style="color:var(--neon-green);">Correct guess</strong> → Round ends instantly. Score = time remaining × 10 (max 300!).</span>
+        </li>
+        <li>
+          <span>4️⃣</span>
+          <span><strong style="color:var(--neon-red);">Wrong guess</strong> → 5-second lockout and −50 points. The image keeps coming into focus and the clock keeps ticking while you're locked out — the correct answer stays hidden until you tap it or time runs out!</span>
+        </li>
+        <li>
+          <span>5️⃣</span>
+          <span>If the timer hits zero, the round ends with 0 points and the correct answer and image are fully revealed.</span>
+        </li>
+      </ol>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard-panel" role="region" aria-label="Leaderboard">
+      <h3>🏆 Top Scores</h3>
+      <ul id="welcomeLbList" class="leaderboard-list" aria-live="polite"></ul>
+      <p id="welcomeLbEmpty" class="lb-empty" aria-live="polite">No scores yet — be the first!</p>
+    </div>
+
+  </div>
+
+
+  <!-- ================================================================
+       GAME SCREEN
+       ================================================================ -->
+  <div id="gameScreen" class="screen hidden" aria-label="Active game round" role="main">
+
+    <!-- HUD -->
+    <div class="hud" role="status" aria-live="polite" aria-label="Game status">
+      <div class="hud-item">
+        <span class="hud-label">Round</span>
+        <span id="hudRound" class="hud-value">1 / 10</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label" style="color:var(--neon-cyan);">Score</span>
+        <span id="hudScore" class="hud-value" style="color:var(--neon-cyan);">0</span>
+      </div>
+    </div>
+
+    <!-- Focus progress bar -->
+    <div class="progress-bar-wrap" role="progressbar" aria-label="Image focus progress" aria-valuemin="0" aria-valuemax="100">
+      <div id="progressFill" class="progress-bar-fill" style="width:100%;"></div>
+    </div>
+
+    <!-- Image frame -->
+    <div id="imageFrame" class="image-frame-wrap" aria-label="Mystery image">
+      <img id="gameImage" class="game-image" src="" alt="Blurred mystery image" style="filter:blur(40px);" />
+      <div id="imageFallback" class="hidden" aria-hidden="true"
+           style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.2);background:#0a0a0a;">
+      </div>
+      <span id="categoryBadge" class="category-badge" aria-label="Image category"></span>
+      <div id="timerOverlay" class="timer-overlay" aria-live="polite" aria-label="Time remaining">30</div>
+    </div>
+
+    <!-- Options -->
+    <div id="optionsGrid" class="options-grid" role="group" aria-label="Answer choices"></div>
+
+    <!-- Lockout bar (hidden by default) -->
+    <div id="lockoutBar" class="lockout-bar hidden" role="alert" aria-live="assertive">
+      ⛔ Locked out — try again in <span id="lockoutSecs">5</span>s
+    </div>
+
+  </div>
+
+  <!-- Score flash overlay -->
+  <div id="scoreFlash" class="score-flash" aria-hidden="true"></div>
+
+
+  <!-- ================================================================
+       RESULT SCREEN (between rounds)
+       ================================================================ -->
+  <div id="resultScreen" class="screen hidden" aria-label="Round result" role="main">
+
+    <div class="result-card">
+      <div id="resultVerdict" class="result-verdict" aria-hidden="true">🎉</div>
+      <div id="resultLabel" class="result-label">Correct!</div>
+      <div id="resultSub" class="result-sub">You guessed it!</div>
+      <span id="pointsBadge" class="points-badge positive">+200 pts</span>
+    </div>
+
+    <!-- Fully revealed image -->
+    <div class="reveal-image-wrap" aria-label="Revealed image">
+      <img id="revealImage" src="" alt="" />
+      <div id="revealFallback" class="hidden" aria-hidden="true"
+           style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);background:#0a0a0a;">
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div style="font-size:0.75rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:0.25rem;">
+        The answer was:
+      </div>
+      <div id="answerLabel" class="answer-label">—</div>
+    </div>
+
+    <button id="nextRoundBtn" class="btn btn-primary" aria-label="Continue to next round">
+      ▶ Next Round
+    </button>
+
+  </div>
+
+
+  <!-- ================================================================
+       GAME OVER SCREEN
+       ================================================================ -->
+  <div id="gameoverScreen" class="screen hidden" aria-label="Game over" role="main">
+
+    <div class="gameover-hero">
+      <div id="gameoverEmoji" class="gameover-emoji" aria-hidden="true">🏆</div>
+      <div id="gameoverTitle" class="gameover-title">Eagle Eye!</div>
+      <div class="gameover-score-label">Final Score</div>
+      <div id="gameoverScore" class="gameover-score" aria-live="polite">0</div>
+      <div id="gameoverHs" style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;"></div>
+      <div id="newHsBadge" class="new-hs-badge hidden" style="margin-top:0.5rem;">
+        🎉 New High Score!
+      </div>
+    </div>
+
+    <!-- Round breakdown -->
+    <div class="gameover-breakdown">
+      <div class="gameover-breakdown-title">Round Breakdown</div>
+      <div id="breakdownList"></div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="leaderboard-panel" role="region" aria-label="High score leaderboard">
+      <h3>🏆 Top Scores</h3>
+      <ul id="gameoverLbList" class="leaderboard-list" aria-live="polite"></ul>
+      <p id="gameoverLbEmpty" class="lb-empty" aria-live="polite">No scores yet.</p>
+    </div>
+
+    <button id="playAgainBtn" class="btn btn-primary" aria-label="Play Blurred Vision again">
+      🔄 Play Again
+    </button>
+
+  </div>
+
+  <!-- Load game-header partial -->
+  <script src="/scripts/load-partials.js"></script>
+  <!-- Question data -->
+  <script src="content.js"></script>
+  <!-- Game logic -->
+  <script src="script.js"></script>
+
+</body>
+</html>
